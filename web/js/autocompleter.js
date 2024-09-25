@@ -115,6 +115,13 @@ async function addCustomWords(text) {
 							priority = num;
 						}
 						break;
+					case 3:
+						// Word,priority,alias
+						num = +n[1];
+						text = n[0] + (n[2] ? "🔄️" + n[2] : "");
+						priority = isNaN(num) ? undefined : num;
+						value = n[0];
+						break;
 					case 4:
 						// a1111 csv format?
 						value = n[0];

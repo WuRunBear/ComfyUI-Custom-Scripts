@@ -499,7 +499,7 @@ export class TextAreaAutoComplete {
 		const priorityMatches = [];
 		const prefixMatches = [];
 		const includesMatches = [];
-		for (const word of Object.keys(this.words)) {
+		for (const [word, wordInfo] of Object.entries(this.words)) {
 			const lowerWord = word.toLocaleLowerCase();
 			if (lowerWord === term) {
 				// Dont include exact matches
@@ -512,7 +512,6 @@ export class TextAreaAutoComplete {
 				continue;
 			}
 
-			const wordInfo = this.words[word];
 			if (wordInfo.priority) {
 				priorityMatches.push({ pos, wordInfo });
 			} else if (pos) {
@@ -536,7 +535,7 @@ export class TextAreaAutoComplete {
 	#update() {
 		let before = this.helper.getBeforeCursor();
 		if (before?.length) {
-			const m = before.match(/([^\s|,|;|"]+)$/);
+			const m = before.match(/([^\s|,|，|;|"]+)$/);
 			if (m) {
 				before = m[0];
 			} else {
