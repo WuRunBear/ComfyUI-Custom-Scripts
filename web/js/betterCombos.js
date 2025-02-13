@@ -5,12 +5,65 @@ import { api } from "../../../scripts/api.js";
 
 const CHECKPOINT_LOADER = "CheckpointLoader|pysssss";
 const LORA_LOADER = "LoraLoader|pysssss";
+const IMAGE_WIDTH = 384;
+const IMAGE_HEIGHT = 384;
 
 function getType(node) {
 	if (node.comfyClass === CHECKPOINT_LOADER) {
 		return "checkpoints";
 	}
 	return "loras";
+}
+
+const getImage = (imageId) => document.querySelector(`#${CSS.escape(imageId)}`);
+
+const calculateImagePosition = (el, bodyRect) => {
+	let { top, left, right } = el.getBoundingClientRect();
+	const { width: bodyWidth, height: bodyHeight } = bodyRect;
+
+	const isSpaceRight = right + IMAGE_WIDTH <= bodyWidth;
+	if (isSpaceRight) {
+		left = right;
+	} else {
+		left -= IMAGE_WIDTH;
+	}
+
+	top = top - IMAGE_HEIGHT / 2;
+	if (top + IMAGE_HEIGHT > bodyHeight) {
+		top = bodyHeight - IMAGE_HEIGHT;
+	}
+	if (top < 0) {
+		top = 0;
+	}
+
+	return { left: Math.round(left), top: Math.round(top), isLeft: !isSpaceRight };
+};
+
+function showImage(el, imageId) {
+	const img = getImage(imageId);
+	if (img) {
+		const bodyRect = document.body.getBoundingClientRect();
+		if (!bodyRect) return;
+
+		const { left, top, isLeft } = calculateImagePosition(el, bodyRect);
+
+		img.style.display = "block";
+		img.style.left = `${left}px`;
+		img.style.top = `${top}px`;
+
+		if (isLeft) {
+			img.classList.add("left");
+		} else {
+			img.classList.remove("left");
+		}
+	}
+}
+
+function closeImage(imageId) {
+	const img = getImage(imageId);
+	if (img) {
+		img.style.display = "none";
+	}
 }
 
 app.registerExtension({
@@ -26,13 +79,14 @@ app.registerExtension({
 					position: absolute;
 					left: 0;
 					top: 0;
-					transform: translate(-100%, 0);
-					width: 384px;
-					height: 384px;
+					width: ${IMAGE_WIDTH}px;
+					height: ${IMAGE_HEIGHT}px;
 					background-size: contain;
-					background-position: top right;
 					background-repeat: no-repeat;
-					filter: brightness(65%);
+					z-index: 9999;
+				}
+				.pysssss-combo-image.left {
+					background-position: top right;
 				}
 			`,
 			parent: document.body,
@@ -72,22 +126,27 @@ app.registerExtension({
 		});
 
 		function encodeRFC3986URIComponent(str) {
-			return encodeURIComponent(str).replace(
-				/[!'()*]/g,
-				(c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
-			);
+			return encodeURIComponent(str).replace(/[!'()*]/g, (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`);
 		}
 
 		// After an element is created for an item, add an image if it has one
 		contextMenuHook["addItem"].push(function (el, menu, [name, value, options]) {
 			if (el && isCustomItem(value) && value?.image && !value.submenu) {
+				const key = `pysssss-image-combo-${name}`;
 				el.textContent += " *";
 				$el("div.pysssss-combo-image", {
-					parent: el,
+					id: key,
+					parent: document.body,
 					style: {
 						backgroundImage: `url(/pysssss/view/${encodeRFC3986URIComponent(value.image)})`,
 					},
 				});
+				const showHandler = () => showImage(el, key);
+				const closeHandler = () => closeImage(key);
+
+				el.addEventListener("mouseenter", showHandler, { passive: true });
+				el.addEventListener("mouseleave", closeHandler, { passive: true });
+				el.addEventListener("click", closeHandler, { passive: true });
 			}
 		});
 
@@ -169,18 +228,18 @@ app.registerExtension({
 									}
 								}
 								return false;
-							}
+							};
 							const includesFromMenuItem = function (item) {
 								if (item.submenu) {
-									return includesFromMenuItems(item.submenu.options)
+									return includesFromMenuItems(item.submenu.options);
 								} else {
 									return item.content === searchElement.content;
 								}
-							}
+							};
 
 							const includes = valuesIncludes.apply(this, arguments) || includesFromMenuItems(this);
 							return includes;
-						}
+						};
 
 						return v;
 					},
@@ -268,7 +327,6 @@ app.registerExtension({
 					return exampleCb?.apply(this, arguments) ?? exampleList.value;
 				};
 
-
 				const listExamples = async () => {
 					exampleList.disabled = true;
 					exampleList.options.values = ["[none]"];
@@ -330,9 +388,7 @@ app.registerExtension({
 					img = this.imgs[this.overIndex];
 				}
 				if (img) {
-					const nodes = app.graph._nodes.filter(
-						(n) => n.comfyClass === LORA_LOADER || n.comfyClass === CHECKPOINT_LOADER
-					);
+					const nodes = app.graph._nodes.filter((n) => n.comfyClass === LORA_LOADER || n.comfyClass === CHECKPOINT_LOADER);
 					if (nodes.length) {
 						options.unshift({
 							content: "Save as Preview",
